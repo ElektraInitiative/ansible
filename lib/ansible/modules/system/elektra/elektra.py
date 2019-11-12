@@ -261,8 +261,6 @@ def main():
             rc, output = elektraMount(mountpoint, filename, resolver, plugins, recommends)
             if rc == 0 and output == True:
                 mountpointExists = False
-            json_output['mount rc'] = rc
-            json_output['mount cmd'] = output
         except ElektraMountException as e:
             module.fail_json(msg="Failed to mount configuration {} to {}: {}".format(filename, mountpoint, e))
     try:

@@ -4,7 +4,6 @@
   tasks:
           - name: keyset
             elektra:
-                    name: keyset
                     mountpoint: system/testhostsasdf
                     filename: /tmp/hosts2
                     plugins:
@@ -37,7 +36,6 @@
                     msg: '{{ elektrafacts }}'
           - name: mteatest
             elektra:
-                    name: keyset
                     mountpoint: /testini
                     keys:
                             ipv4:
@@ -64,7 +62,6 @@
                     msg: '{{ testinifacts }}'
           - name: augeashosts
             elektra:
-                    name: keyset
                     mountpoint: system/augeashosts
                     keeporder: True
                     keys:
