@@ -1,5 +1,83 @@
 #!/usr/bin/python
 
+ANSIBLE_METADATA = {
+    'metadata_version': '1.1',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
+
+DOCUMENTATION = '''
+---
+module: elektra
+
+short_description: libelektra interface
+
+version_added: "2.8.6"
+
+description:
+    - "This module is used to manage configurations using libelektra"
+
+options:
+    mountpoint:
+        description:
+            - mountpoint of the configuration
+        required: true
+    filename:
+        description:
+            - name of the configuration that to be mounted
+        required: false
+    resolver:
+        description:
+            - which resolver should be used for the backend
+        required: false
+    plugins:
+        description:
+            - list of plugins to be used as backend and their configuration
+        required: true
+    recommends:
+        description:
+            - use recommended plugins
+        required: false
+    keeporder:
+        description:
+            - use "order" metadata to preserve the order of the passed keyset
+    keys:
+        description:
+            - keyset to write
+        required: false
+author:
+    - Thomas Waser
+'''
+
+EXAMPLES = '''
+# mount /etc/hosts with recommends to system/hosts and set localhost to 127.0.0.1
+- name: update localhost ip
+  elektra:
+    mountpoint: system/hosts
+    filename: /etc/hosts
+    recommends: True
+    plugins:
+        - hosts:
+    keys:
+        ipv4:
+            localhost: 127.0.0.1
+
+# mount /tmp/test.ini to system/testini using the ini plugin and ':' as separator instead of '='
+# and replace "key: value" with "key: newvalue"
+- name: mount ini
+  elektra:
+      mountpoint: system/testini
+      filename: /tmp/test.ini
+      plugins:
+        - ini:
+            delimiter: ':'
+      keys:
+        key: newvalue
+'''
+
+RETURN = '''
+'''
+
 
 from ansible.module_utils.basic import AnsibleModule
 from subprocess import check_output, PIPE, CalledProcessError
@@ -157,7 +235,6 @@ def elektraUmount(mountpoint):
 def main():
     module = AnsibleModule(
             argument_spec=dict(
-                name=dict(type='str'),
                 mountpoint=dict(type='str'),
                 keys=dict(type='raw', default={}),
                 recommends=dict(type='bool', default=True),         # mount with --with-recommends
@@ -167,7 +244,6 @@ def main():
                 keeporder=dict(type='bool', default=False),         # if True: add "order" metakey for each "keys"-element based on the original argument order
                 )
             )
-    name = module.params.get('name')
     keys = module.params.get('keys')
     mountpoint = module.params.get('mountpoint')
     plugins = module.params.get('plugins')
