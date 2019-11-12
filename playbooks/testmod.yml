@@ -5,13 +5,13 @@
           - name: keyset
             elektra:
                     name: keyset
-                    mountpoint: system/testhosts
-                    filename: /tmp/hosts
+                    mountpoint: system/testhostsasdf
+                    filename: /tmp/hosts2
                     plugins:
                             - ini: 
                                 arg1: test1
                                 arg2: test2
-                            - plugin2:
+                            - validation:
                                 arg21: test21
 
                     keys:

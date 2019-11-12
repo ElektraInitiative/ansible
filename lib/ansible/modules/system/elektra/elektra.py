@@ -2,6 +2,7 @@
 
 
 from ansible.module_utils.basic import AnsibleModule
+from subprocess import check_output, PIPE, CalledProcessError
 import kdb
 from collections import OrderedDict
 
@@ -92,6 +93,13 @@ def elektraSet(mountpoint, keyset, keeporder):
             raise ElektraWriteException("Failed to write keyset to {}".format(mountpoint))
         return rc
 
+def execute(command):
+    try:
+        output = check_output(command)
+        return (0, output)
+    except CalledProcessError as e:
+        return (e.returncode, e.output)
+
 def elektraMount(mountpoint, filename, resolver, plugins, recommends):
     with kdb.KDB() as db:
         ks = kdb.KeySet(0)
@@ -106,9 +114,24 @@ def elektraMount(mountpoint, filename, resolver, plugins, recommends):
         searchKey = mountpoints +'/'+ mountpoint.replace('/', '\/')
         try:
             key = ks[searchKey]
-            return 0
+            return (0, True)
         except KeyError:
-            return 1
+            command = []
+            command.append("kdb")
+            command.append("mount")
+            if recommends:
+                command.append("--with-recommends")
+            command.append("-R")
+            command.append(resolver)
+            command.append(filename)
+            command.append(mountpoint)
+            for item in plugins:
+                for cname, cvalue in item.items():
+                    command.append(str(cname))          # plugin
+                    if isinstance(cvalue, dict):        # iterate plugin meta
+                        for scname, scvalue in cvalue.items():
+                            command.append(str(scname)+"="+str(scvalue))
+            return execute(command)
 
 def elektraUmount(mountpoint):
     with kdb.KDB() as db:
@@ -159,11 +182,12 @@ def main():
     rc = 0
     if plugins or filename != '':
         try:
-            rc = elektraMount(mountpoint, filename, resolver, plugins, recommends)
-            if rc == 1:
+            rc, output = elektraMount(mountpoint, filename, resolver, plugins, recommends)
+            if rc == 0 and output == True:
                 mountpointExists = False
             json_output['mount rc'] = rc
-        except ElektraMountExecption as e:
+            json_output['mount cmd'] = output
+        except ElektraMountException as e:
             module.fail_json(msg="Failed to mount configuration {} to {}: {}".format(filename, mountpoint, e))
     try:
         rc = elektraSet(mountpoint, keys, keeporder)
