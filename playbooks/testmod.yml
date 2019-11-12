@@ -1,0 +1,87 @@
+
+- name: test my new module
+  hosts: localhost
+  tasks:
+          - name: keyset
+            elektra:
+                    name: keyset
+                    mountpoint: system/testhosts
+                    filename: /tmp/hosts
+                    plugins:
+                            - ini: 
+                                arg1: test1
+                                arg2: test2
+                            - plugin2:
+                                arg21: test21
+
+                    keys:
+                            ipv4:
+                                    localhost2: 
+                                        value: 127.0.0.1
+                                        hostalias1:
+                                        hostalias2:
+                                        meta:
+                                                metakey1: test1
+                                                metakey2: test2
+                            ipv6:
+                                    localhost2: ff02::1
+            register: keyout
+          - name: dump key output
+            debug:
+                    msg: '{{ keyout }}'
+          - name: gather elektra facts
+            elektrafacts: mountpoint=system/testhosts
+            register: elektrafacts
+          - name: dump elektra facts
+            debug:
+                    msg: '{{ elektrafacts }}'
+          - name: mteatest
+            elektra:
+                    name: keyset
+                    mountpoint: /testini
+                    keys:
+                            ipv4:
+                                    localhost2:   
+                                        value: 127.0.0.1
+                                        hostalias1:
+                                        hostalias2:
+                                        meta:
+                                                metakey1: test1
+                                                metakey2: test2
+                                                comment: testcomment
+                                                #                                                check/validation: "abd"
+                            ipv6:
+                                    localhost2: ff02::1
+            register: inikeyout
+          - name: dump inikey output
+            debug:
+                    msg: '{{ inikeyout }}'
+          - name: get testini facts
+            elektrafacts: mountpoint=system/testini21
+            register: testinifacts
+          - name: dump testini facts
+            debug:
+                    msg: '{{ testinifacts }}'
+          - name: augeashosts
+            elektra:
+                    name: keyset
+                    mountpoint: system/augeashosts
+                    keeporder: True
+                    keys:
+                            1: 
+                                ipaddr: 127.0.0.1
+                                canonical: localhost
+                                alias[1]: localhostalias
+                                alias[2]: localhostalias2
+                            2:
+                                ipaddr: ff02::01
+                                canonical: localhost
+                                alias: testalias
+                            4:
+                                ipaddr: 255.255.255.255
+                                canonical: notsureifthiswillwork
+                                alias: win!
+            register: augeaskeyout
+          - name: dump augeas register
+            debug:
+                    msg: '{{ augeaskeyout }}'
