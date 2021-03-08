@@ -50,10 +50,10 @@ author:
 '''
 
 EXAMPLES = '''
-# mount /etc/hosts with recommends to system/hosts and set localhost to 127.0.0.1
+# mount /etc/hosts with recommends to system:/hosts and set localhost to 127.0.0.1
 - name: update localhost ip
   elektra:
-    mountpoint: system/hosts
+    mountpoint: system:/hosts
     filename: /etc/hosts
     recommends: True
     plugins:
@@ -62,11 +62,11 @@ EXAMPLES = '''
         ipv4:
             localhost: 127.0.0.1
 
-# mount /tmp/test.ini to system/testini using the ini plugin and ':' as separator instead of '='
+# mount /tmp/test.ini to system:/testini using the ini plugin and ':' as separator instead of '='
 # and replace "key: value" with "key: newvalue"
 - name: mount ini
   elektra:
-      mountpoint: system/testini
+      mountpoint: system:/testini
       filename: /tmp/test.ini
       plugins:
         - ini:
@@ -157,12 +157,15 @@ def elektraSet(mountpoint, keyset, keeporder):
             if isinstance(value, dict):
                 for sname, svalue in value.items():
                     if sname == 'value':
-                        key.value = svalue
+                        if key.value != str(svalue):
+                            key.value = str(svalue)
                     elif sname == 'meta':
                         for mname, mvalue in svalue.items():
-                            key.setMeta(mname, str(mvalue))
+                            if key.getMeta(mname) != str(mvalue):
+                                key.setMeta(mname, str(mvalue))
             else:
-                key.value = value
+                if key.value != str(value):
+                    key.value = str(value)
         try:
             rc = db.set(ks, mountpoint)
         except kdb.KDBException as e:
@@ -181,14 +184,14 @@ def execute(command):
 def elektraMount(mountpoint, filename, resolver, plugins, recommends):
     with kdb.KDB() as db:
         ks = kdb.KeySet(0)
-        mountpoints = "system/elektra/mountpoints"
+        mountpoints = "system:/elektra/mountpoints"
         rc = 0
         try:
             rc = db.get(ks, mountpoints)
         except kdb.KDBException as e:
             raise ElektraReadException("KDB.get failed: {}".format(e))
         if rc == -1:
-            raise ElektraMountException("Failed to fetch elektra facts: failed to read system/elektra/mountpoints.")
+            raise ElektraMountException("Failed to fetch elektra facts: failed to read system:/elektra/mountpoints.")
         searchKey = mountpoints +'/'+ mountpoint.replace('/', '\/')
         try:
             key = ks[searchKey]
@@ -214,14 +217,14 @@ def elektraMount(mountpoint, filename, resolver, plugins, recommends):
 def elektraUmount(mountpoint):
     with kdb.KDB() as db:
         ks = kdb.KeySet(0)
-        mountpoints = "system/elektra/mountpoints"
+        mountpoints = "system:/elektra/mountpoints"
         rc = 0
         try:
             rc = db.get(ks, mountpoints)
         except kdb.KDBException as e:
             raise ElektraReadException("KDB.get failed: {}".format(e))
         if rc != 1:
-            raise ElektraUmountException("Failed to fetch elektra facts: failed to read system/elektra/mountpoints.")
+            raise ElektraUmountException("Failed to fetch elektra facts: failed to read system:/elektra/mountpoints.")
         key = kdb.Key()
         key.name = mountpoints+'/'+mountpoint.replace('/', '\/')
         ks.cut(key)
@@ -235,7 +238,7 @@ def elektraUmount(mountpoint):
 def main():
     module = AnsibleModule(
             argument_spec=dict(
-                mountpoint=dict(type='str'),
+                mountpoint=dict(type='str', required=True),
                 keys=dict(type='raw', default={}),
                 recommends=dict(type='bool', default=True),         # mount with --with-recommends
                 filename=dict(type='str', default=''),
@@ -253,6 +256,10 @@ def main():
     keeporder = module.params.get('keeporder')
     json_output={}                                                  
     json_output['changed'] = False
+
+    if mountpoint[0] == '/':
+        module.fail_json(msg="Cascading mountpoints currently not supported")
+        return
 
     mountpointExists = True     # Indicates if mountpoint already exists prior to calling the module. If not/"False" unmount it on failure
     rc = 0
@@ -280,4 +287,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
